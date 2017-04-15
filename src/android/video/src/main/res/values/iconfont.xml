@@ -1,0 +1,4 @@
+<resources>
+    <string name="icon_hangup">&#xe639;</string>
+    <string name="icon_setup">&#xe85e;</string>
+</resources>

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<plugin id="net-suowei-videocall" version="0.0.1" xmlns="http://apache.org/cordova/ns/plugins/1.0" xmlns:android="http://schemas.android.com/apk/res/android">
+
+	<name>videocall</name>
+	<description></description>
+	<js-module src="www/videocall.js" name="videocall">
+		<clobbers target="CallPlugin"/>
+	</js-module>
+	<platform name="android">
+
+		<config-file target="res/xml/config.xml" parent="/*">
+			<feature name="CallPlugin">
+				<param name="android-package" value="net.suowei.call.CallPlugin"/>
+			</feature>
+		</config-file>
+
+		<source-file src="src/android/CallPlugin.java" target-dir="src/net/suowei/call"/>
+
+		<framework src="src/android/video" custom="true"/>
+
+	</platform>
+</plugin>

@@ -1,3 +1,8 @@
 <resources>
     <string name="app_name">call</string>
+    <string name="text_cancel">取消</string>
+    <string name="text_call_connecting">正在等待对方接受邀请</string>
+    <string name="text_hangup">挂断</string>
+    <string name="text_toggle_speaker">切换扬声器</string>
+    <string name="text_toggle_camera">切换摄像头</string>
 </resources>

@@ -14,6 +14,11 @@
 			</feature>
 		</config-file>
 
+		<config-file target="AndroidManifest.xml" parent="/manifest/application">
+			<activity android:name="net.suowei.video.VideoActivity" android:screenOrientation="portrait"/>
+			<service android:name="net.suowei.video.BellService" />
+		</config-file>
+
 		<source-file src="src/android/CallPlugin.java" target-dir="src/net/suowei/call"/>
 
 		<framework src="src/android/video" custom="true"/>

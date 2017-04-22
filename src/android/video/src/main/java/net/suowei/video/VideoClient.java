@@ -1,7 +1,5 @@
 package net.suowei.video;
 
-import android.util.Log;
-
 import com.github.nkzawa.emitter.Emitter;
 import com.github.nkzawa.socketio.client.IO;
 import com.github.nkzawa.socketio.client.Socket;
@@ -22,18 +20,20 @@ public class VideoClient implements Serializable
 
     public VideoListener videoListener;
 
-    public VideoClient(ConnectListener connectListener, VideoListener videoListener)
+    public String url;
+
+    public VideoClient(String url, ConnectListener connectListener, VideoListener videoListener)
     {
         this.connectListener = connectListener;
         this.videoListener = videoListener;
+        this.url = url;
     }
 
     public void connect()
     {
-        Log.e("测试消息", "链接服务器");
         try
         {
-            this.socket = IO.socket("http://192.168.1.104:3000");
+            this.socket = IO.socket(url);
 
             this.socket.on(Socket.EVENT_CONNECT_ERROR, new Emitter.Listener()
             {
@@ -49,7 +49,6 @@ public class VideoClient implements Serializable
             {
                 public void call(Object... args)
                 {
-                    Log.e("lianjie", "链接成功");
                     JSONObject message = new JSONObject();
                     try
                     {
@@ -78,7 +77,6 @@ public class VideoClient implements Serializable
                 @Override
                 public void call(Object... args)
                 {
-                    Log.e("测试消息", "接收到远程消息");
                     try
                     {
                         JSONObject message = (JSONObject) args[0];
@@ -87,7 +85,6 @@ public class VideoClient implements Serializable
                         VideoClient.this.callee = caller;
                         if(event.equals("candidate"))
                         {
-                            Log.e("测试消息", "candidate消息，开始设置ice服务");
                             VideoClient.this.videoListener.addIceCandidate(message);
                         }
                         else
@@ -95,7 +92,6 @@ public class VideoClient implements Serializable
                             VideoClient.this.videoListener.setRemoteDescription(message);
                             if(event.equals("offer"))
                             {
-                                Log.e("测试消息", "请求连接消息，开始创建应答");
                                 VideoClient.this.videoListener.createAnswer();
                             }
                         }

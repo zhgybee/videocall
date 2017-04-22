@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:orientation="vertical"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent">
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:gravity="top"
+        android:layout_margin="10dp">
+
+        <ImageView
+            android:id="@+id/calleeicon"
+            android:layout_width="70dp"
+            android:layout_height="70dp"
+            android:layout_alignParentTop="true"
+            android:layout_alignParentLeft="true"
+            android:layout_alignParentStart="true"
+            android:layout_marginRight="7dp"
+            android:background="#ffffff"/>
+
+        <TextView
+            android:id="@+id/calleename"
+            android:text="关云长"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#ffffff"
+            android:textSize="23sp"
+            android:layout_alignParentTop="true"
+            android:layout_toRightOf="@+id/calleeicon"
+            android:layout_toEndOf="@+id/calleeicon"
+            android:layout_marginTop="7dp"/>
+
+        <TextView
+            android:text="@string/text_call_connecting"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#ffffff"
+            android:textSize="14sp"
+            android:layout_below="@+id/calleename"
+            android:layout_toRightOf="@+id/calleeicon"
+            android:layout_toEndOf="@+id/calleeicon"/>
+    </RelativeLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="bottom|center_horizontal">
+
+        <ImageView
+            android:id="@+id/cancel"
+            android:layout_width="70dp"
+            android:layout_height="70dp"
+            android:src="@drawable/hangup"
+            android:layout_marginBottom="7dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/text_cancel"
+            android:textColor="#ffffff"
+            android:textSize="11sp"
+            android:layout_marginBottom="12dp"/>
+
+    </LinearLayout>
+
+
+</LinearLayout>

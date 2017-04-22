@@ -2,17 +2,24 @@ package net.suowei.video;
 
 import android.Manifest;
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.graphics.Point;
 import android.graphics.Typeface;
+import android.media.AudioManager;
 import android.opengl.GLSurfaceView;
+import android.os.Handler;
+import android.os.Message;
 import android.support.v4.app.ActivityCompat;
 import android.os.Bundle;
-import android.util.Log;
+import android.support.v4.content.LocalBroadcastManager;
 import android.view.View;
 import android.view.Window;
-import android.widget.FrameLayout;
+import android.widget.Chronometer;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 import org.json.JSONException;
@@ -41,7 +48,7 @@ import java.util.Set;
 public class VideoActivity extends Activity implements VideoListener, ConnectListener
 {
 
-    private GLSurfaceView videoview;
+    private GLSurfaceView videoView;
 
     private VideoClient client;
 
@@ -49,25 +56,42 @@ public class VideoActivity extends Activity implements VideoListener, ConnectLis
 
     private MediaConstraints peerConstraints = new MediaConstraints();
 
-    private VideoRenderer.Callbacks localrenderer = null;
+    private VideoRenderer.Callbacks localRenderer = null;
 
-    private VideoRenderer.Callbacks remoterenderer = null;
+    private VideoRenderer.Callbacks remoteRenderer = null;
 
     private PeerConnectionFactory peerConnectionFactory;
 
-    private VideoTrack videotrack;
+    private VideoTrack videoTrack;
 
-    private AudioTrack audiotrack;
+    private AudioTrack audioTrack;
 
-    private VideoSource videosource;
+    private VideoSource videoSource;
 
-    private AudioSource audiosource;
+    private AudioSource audioSource;
 
     private int REQUEST_CODE_ASK_PERMISSIONS = 1981;
 
     private Typeface iconTypeFace;
 
-    @Override
+    private View connectingLayout;
+
+    private View connectedLayout;
+
+    private Chronometer timer;
+
+    private AudioManager audioManager;
+
+    private VideoCapturerAndroid viewcapturer;
+
+    private ImageView calleeicon;
+
+    private User caller;
+
+    private User callee;
+
+    private LocalBroadcastManager localBroadcastManager;
+
     protected void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
@@ -75,8 +99,6 @@ public class VideoActivity extends Activity implements VideoListener, ConnectLis
         iconTypeFace = Typeface.createFromAsset(getAssets(),"fonts/iconfont.ttf");
 
         requestWindowFeature(Window.FEATURE_NO_TITLE);
-
-        setContentView(R.layout.video);
 
         Set<String> permissions = new HashSet<String>();
         permissions.add(Manifest.permission.CAMERA);
@@ -141,70 +163,53 @@ public class VideoActivity extends Activity implements VideoListener, ConnectLis
 
     public void initialise()
     {
+        Point screensize = new Point();
+        getWindowManager().getDefaultDisplay().getSize(screensize);
+        int screenwidth = screensize.x;
+        int screenheight = screensize.y;
+
+        this.audioManager = (AudioManager)this.getSystemService(Context.AUDIO_SERVICE);
+        this.audioManager.setSpeakerphoneOn(true);
+
         PeerConnectionFactory.initializeAndroidGlobals(this, true, true, true);
         peerConnectionFactory = new PeerConnectionFactory();
 
-        Point point = new Point();
-        getWindowManager().getDefaultDisplay().getSize(point);
-        MediaConstraints videoconstraints = new MediaConstraints();
-        videoconstraints.mandatory.add(new MediaConstraints.KeyValuePair("maxHeight", String.valueOf(point.x)));
-        videoconstraints.mandatory.add(new MediaConstraints.KeyValuePair("maxWidth", String.valueOf(point.y)));
-        videoconstraints.mandatory.add(new MediaConstraints.KeyValuePair("maxFrameRate", String.valueOf(30)));
-        videoconstraints.mandatory.add(new MediaConstraints.KeyValuePair("minFrameRate", String.valueOf(30)));
+        MediaConstraints mediaconstraints = new MediaConstraints();
+        mediaconstraints.mandatory.add(new MediaConstraints.KeyValuePair("maxHeight", String.valueOf(screenwidth)));
+        mediaconstraints.mandatory.add(new MediaConstraints.KeyValuePair("maxWidth", String.valueOf(screenheight)));
+        mediaconstraints.mandatory.add(new MediaConstraints.KeyValuePair("maxFrameRate", String.valueOf(30)));
+        mediaconstraints.mandatory.add(new MediaConstraints.KeyValuePair("minFrameRate", String.valueOf(30)));
 
-        VideoCapturerAndroid viewcapturer = VideoCapturerAndroid.create(CameraEnumerationAndroid.getNameOfFrontFacingDevice(), null);
-        videosource = peerConnectionFactory.createVideoSource(viewcapturer, videoconstraints);
-        videotrack = peerConnectionFactory.createVideoTrack("ARDAMSV0", videosource);
-        audiosource = peerConnectionFactory.createAudioSource(new MediaConstraints());
-        audiotrack = peerConnectionFactory.createAudioTrack("ARDAMSA0", audiosource);
+        viewcapturer = VideoCapturerAndroid.create(CameraEnumerationAndroid.getNameOfFrontFacingDevice(), null);
+
+        videoSource = peerConnectionFactory.createVideoSource(viewcapturer, mediaconstraints);
+        videoTrack = peerConnectionFactory.createVideoTrack("ARDAMSV0", videoSource);
+        audioSource = peerConnectionFactory.createAudioSource(new MediaConstraints());
+        audioTrack = peerConnectionFactory.createAudioTrack("ARDAMSA0", audioSource);
 
         peerConstraints.mandatory.add(new MediaConstraints.KeyValuePair("OfferToReceiveAudio", "true"));
         peerConstraints.mandatory.add(new MediaConstraints.KeyValuePair("OfferToReceiveVideo", "true"));
         peerConstraints.optional.add(new MediaConstraints.KeyValuePair("DtlsSrtpKeyAgreement", "true"));
 
-        videoview = new GLSurfaceView(this);
-        setContentView(videoview);
-
-        Point size = new Point();
-        getWindowManager().getDefaultDisplay().getSize(size);
-        int width = size.x;
-
-        TextView setupbutton = new TextView(this);
-        setupbutton.setText(R.string.icon_setup);
-        setupbutton.setTextSize(50);
-        setupbutton.setTextColor(0x44ffffff);
-        setupbutton.setTypeface(iconTypeFace);
-        setupbutton.setOnClickListener(new View.OnClickListener()
-        {
-            public void onClick(View view)
-            {
-                VideoActivity.this.finish();
-            }
-        });
-
-        int space = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
-        setupbutton.measure(space, space);
-        setupbutton.setX(width - setupbutton.getMeasuredWidth() - 20);
-        setupbutton.setY(20);
-        addContentView(setupbutton, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT ,FrameLayout.LayoutParams.WRAP_CONTENT));
-        VideoRendererGui.setView(videoview, null);
+        videoView = new GLSurfaceView(this);
+        setContentView(videoView);
+        VideoRendererGui.setView(videoView, null);
 
         try
         {
-            remoterenderer = VideoRendererGui.createGuiRenderer(0, 0, 100, 100, RendererCommon.ScalingType.SCALE_ASPECT_FILL, false);
-            localrenderer = VideoRendererGui.createGuiRenderer(0, 0, 100, 100, RendererCommon.ScalingType.SCALE_ASPECT_FILL, true);
+            remoteRenderer = VideoRendererGui.createGuiRenderer(0, 0, 100, 100, RendererCommon.ScalingType.SCALE_ASPECT_FILL, false);
+            localRenderer = VideoRendererGui.createGuiRenderer(0, 0, 100, 100, RendererCommon.ScalingType.SCALE_ASPECT_FILL, true);
         }
         catch(Exception e)
         {
             e.printStackTrace();
         }
 
-        videotrack.addRenderer(new VideoRenderer(localrenderer));
-
+        videoTrack.addRenderer(new VideoRenderer(localRenderer));
 
         Intent intent = getIntent();
-        String caller = intent.getStringExtra("caller");
-        if(caller != null && !caller.equals(""))
+        caller = (User)intent.getSerializableExtra("caller");
+        if(caller.id != null && !caller.id.equals(""))
         {
             LinkedList<PeerConnection.IceServer> iceservers = new LinkedList<PeerConnection.IceServer>();
             iceservers.add(new PeerConnection.IceServer("stun:stun.l.google.com:19302"));
@@ -212,20 +217,25 @@ public class VideoActivity extends Activity implements VideoListener, ConnectLis
             peerConnection = peerConnectionFactory.createPeerConnection(iceservers, peerConstraints, new PeerObserver());
 
             MediaStream mediaStream = peerConnectionFactory.createLocalMediaStream("ARDAMS");
-            mediaStream.addTrack(videotrack);
-            mediaStream.addTrack(audiotrack);
+            mediaStream.addTrack(videoTrack);
+            mediaStream.addTrack(audioTrack);
             peerConnection.addStream(mediaStream);
 
-            String callee = intent.getStringExtra("callee");
+            String url = intent.getStringExtra("url");
+            callee = (User)intent.getSerializableExtra("callee");
 
-            client = new VideoClient(VideoActivity.this, VideoActivity.this);
-            client.caller = caller;
+            client = new VideoClient(url, VideoActivity.this, VideoActivity.this);
+            client.caller = caller.id;
             client.connect();
 
-            if(callee != null && !callee.equals(""))
+            if(callee.id != null && !callee.id.equals(""))
             {
-                client.callee = callee;
+                client.callee = callee.id;
                 client.call();
+            }
+            else
+            {
+                connecting();
             }
         }
         else
@@ -234,22 +244,165 @@ public class VideoActivity extends Activity implements VideoListener, ConnectLis
             {
                 public void run()
                 {
+                    VideoActivity.this.broadcast("105", "");
                     Toast.makeText(getApplicationContext(), "呼叫人未设置", Toast.LENGTH_SHORT).show();
                 }
             });
         }
     }
 
+    public void connecting()
+    {
+        startBellService();
+        if(this.connectingLayout == null)
+        {
+            this.connectingLayout = createConnectingLayout();
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.MATCH_PARENT);
+            addContentView(this.connectingLayout, params);
+        }
+    }
+
+    public void connected()
+    {
+        stopBellService();
+        if(this.connectingLayout != null)
+        {
+            this.connectingLayout.setVisibility(View.GONE);
+        }
+        if(this.connectedLayout == null)
+        {
+            this.connectedLayout = createConnectedLayout();
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.MATCH_PARENT);
+            addContentView(this.connectedLayout, params);
+        }
+
+        timer = (Chronometer)this.connectedLayout.findViewById(R.id.timer);
+        timer.start();
+    }
+
+
+    public View createConnectingLayout()
+    {
+        View view = View.inflate(this, R.layout.connecting, null);
+        ImageView cancelbutton = (ImageView)view.findViewById(R.id.cancel);
+        cancelbutton.setOnClickListener(new View.OnClickListener()
+        {
+            public void onClick(View view)
+            {
+                VideoActivity.this.broadcast("102", "");
+                VideoActivity.this.finish();
+            }
+        });
+
+        this.calleeicon = (ImageView)view.findViewById(R.id.calleeicon);
+
+        if(VideoActivity.this.caller.icon != null && !VideoActivity.this.caller.icon.equals(""))
+        {
+            new Thread(new Runnable()
+            {
+                public void run()
+                {
+                    Bitmap bitmap = AppUtils.getBitmap(VideoActivity.this.caller.icon);
+
+                    Message message = new Message();
+                    message.obj = bitmap;
+                    loadCalleeIcon.sendMessage(message);
+                }
+            }).start();
+        }
+
+        TextView calleename = (TextView)view.findViewById(R.id.calleename);
+        calleename.setText(this.callee.name);
+
+        return view;
+    }
+
+    public View createConnectedLayout()
+    {
+        View view = View.inflate(this, R.layout.connected, null);
+        TextView speakerbutton = (TextView)view.findViewById(R.id.speaker);
+        speakerbutton.setOnClickListener(new View.OnClickListener()
+        {
+            public void onClick(View view)
+            {
+                if(!VideoActivity.this.audioManager.isSpeakerphoneOn())
+                {
+                    VideoActivity.this.audioManager.setSpeakerphoneOn(true);
+                    VideoActivity.this.audioManager.setMode(AudioManager.MODE_NORMAL);
+                }
+                else
+                {
+                    VideoActivity.this.audioManager.setSpeakerphoneOn(false);
+                    VideoActivity.this.audioManager.setMode(AudioManager.MODE_IN_CALL);
+                }
+            }
+        });
+        TextView camerabutton = (TextView)view.findViewById(R.id.camera);
+        camerabutton.setOnClickListener(new View.OnClickListener()
+        {
+            public void onClick(View view)
+            {
+                VideoActivity.this.viewcapturer.switchCamera(null);
+            }
+        });
+        ImageView hangupbutton = (ImageView)view.findViewById(R.id.hangup);
+        hangupbutton.setOnClickListener(new View.OnClickListener()
+        {
+            public void onClick(View view)
+            {
+                VideoActivity.this.broadcast("103", String.valueOf(VideoActivity.this.timer.getText()));
+                VideoActivity.this.finish();
+            }
+        });
+
+        speakerbutton.setTypeface(iconTypeFace);
+        camerabutton.setTypeface(iconTypeFace);
+
+
+        return view;
+    }
+
+    private Handler loadCalleeIcon = new Handler()
+    {
+        public void handleMessage(Message message)
+        {
+            Bitmap bitmap = (Bitmap)message.obj;
+            VideoActivity.this.calleeicon.setImageBitmap(bitmap);
+        }
+    };
+
+    public void startBellService()
+    {
+        Intent intent = new Intent(this, BellService.class);
+        this.startService(intent);
+    }
+
+    public void stopBellService()
+    {
+        Intent intent = new Intent(this, BellService.class);
+        this.stopService(intent);
+    }
+
+    public void broadcast(String code, String message)
+    {
+        this.localBroadcastManager = LocalBroadcastManager.getInstance(this);
+        Intent intent = new Intent();
+        intent.putExtra("code", code);
+        intent.putExtra("message", message);
+        intent.setAction(PluginBroadcastReceiver.BROADCASTCODE);
+        localBroadcastManager.sendBroadcast(intent);
+    }
+
     public void onPause()
     {
-        Log.e("测试消息", "onPause");
-        if(videoview != null)
+        stopBellService();
+        if(videoView != null)
         {
-            videoview.onPause();
+            videoView.onPause();
         }
-        if(videosource != null)
+        if(videoSource != null)
         {
-            videosource.stop();
+            videoSource.stop();
         }
         if(client != null)
         {
@@ -260,14 +413,14 @@ public class VideoActivity extends Activity implements VideoListener, ConnectLis
 
     public void onResume()
     {
-        Log.e("测试消息", "onResume");
-        if(videoview != null)
+        startBellService();
+        if(videoView != null)
         {
-            videoview.onResume();
+            videoView.onResume();
         }
-        if(videosource != null)
+        if(videoSource != null)
         {
-            videosource.restart();
+            videoSource.restart();
         }
         if(client != null)
         {
@@ -278,15 +431,15 @@ public class VideoActivity extends Activity implements VideoListener, ConnectLis
 
     public void onDestroy()
     {
-        Log.e("测试消息", "onDestroy");
+        stopBellService();
         if(peerConnection != null)
         {
             peerConnection.dispose();
         }
 
-        if(videosource != null)
+        if(videoSource != null)
         {
-            videosource.dispose();
+            videoSource.dispose();
         }
 
         if(peerConnectionFactory != null)
@@ -309,6 +462,7 @@ public class VideoActivity extends Activity implements VideoListener, ConnectLis
         {
             public void run()
             {
+                VideoActivity.this.broadcast("104", "");
                 Toast.makeText(getApplicationContext(), "连接失败", Toast.LENGTH_SHORT).show();
             }
         });
@@ -320,6 +474,7 @@ public class VideoActivity extends Activity implements VideoListener, ConnectLis
         {
             public void run()
             {
+                VideoActivity.this.broadcast("101", "");
                 Toast.makeText(getApplicationContext(), "连接成功", Toast.LENGTH_SHORT).show();
             }
         });
@@ -331,6 +486,7 @@ public class VideoActivity extends Activity implements VideoListener, ConnectLis
         {
             public void run()
             {
+                VideoActivity.this.broadcast("106", "");
                 Toast.makeText(getApplicationContext(), "连接超时", Toast.LENGTH_SHORT).show();
             }
         });
@@ -338,7 +494,6 @@ public class VideoActivity extends Activity implements VideoListener, ConnectLis
 
     public void addIceCandidate(JSONObject message) throws JSONException
     {
-        Log.e("测试消息", "设置本地的远程iceserver");
         if(!message.isNull("candidate"))
         {
             JSONObject candidate = message.getJSONObject("candidate");
@@ -351,23 +506,20 @@ public class VideoActivity extends Activity implements VideoListener, ConnectLis
 
     public void setRemoteDescription(JSONObject message) throws JSONException
     {
-        Log.e("测试消息", "设置本地的远程webrtc描述");
         JSONObject description = message.getJSONObject("description");
         peerConnection.setRemoteDescription(new PeerSdpObserver(), new SessionDescription(SessionDescription.Type.fromCanonicalForm(description.getString("type")), description.getString("sdp")));
     }
 
     public void createAnswer()
     {
-        Log.e("测试消息", "创建answer");
         peerConnection.createAnswer(new PeerSdpObserver(), peerConstraints);
     }
 
-
     public void createOffer()
     {
-        Log.e("测试消息", "创建offer");
         peerConnection.createOffer(new PeerSdpObserver(), peerConstraints);
     }
+
 
     private class PeerSdpObserver implements SdpObserver
     {
@@ -375,9 +527,7 @@ public class VideoActivity extends Activity implements VideoListener, ConnectLis
         {
             try
             {
-                Log.e("测试消息", "设置本地的webrtc描述");
                 peerConnection.setLocalDescription(this, session);
-                Log.e("测试消息", "发送创建的offer或answer");
                 JSONObject message = new JSONObject();
                 message.put("event", session.type.canonicalForm());
                 JSONObject description = new JSONObject();
@@ -396,17 +546,14 @@ public class VideoActivity extends Activity implements VideoListener, ConnectLis
 
         public void onSetSuccess()
         {
-            Log.e("1111111111111", "onSetSuccess");
         }
 
         public void onCreateFailure(String s)
         {
-            Log.e("1111111111111", "onCreateFailure");
         }
 
         public void onSetFailure(String s)
         {
-            Log.e("1111111111111", "onSetFailure");
         }
     }
 
@@ -415,7 +562,6 @@ public class VideoActivity extends Activity implements VideoListener, ConnectLis
 
         public void onSignalingChange(PeerConnection.SignalingState signalingState)
         {
-            Log.e("1111111111111", "onSignalingChange");
         }
 
         public void onIceConnectionChange(PeerConnection.IceConnectionState iceConnectionState)
@@ -432,7 +578,6 @@ public class VideoActivity extends Activity implements VideoListener, ConnectLis
 
         public void onIceCandidate(IceCandidate icecandidate)
         {
-            Log.e("测试消息", "发送iceserver");
             try
             {
                 JSONObject message = new JSONObject();
@@ -454,27 +599,30 @@ public class VideoActivity extends Activity implements VideoListener, ConnectLis
 
         public void onAddStream(MediaStream mediaStream)
         {
-            Log.e("测试消息", "开始加载远程视频流");
-            mediaStream.videoTracks.get(0).addRenderer(new VideoRenderer(remoterenderer));
-            VideoRendererGui.update(remoterenderer, 0, 0, 100, 100, RendererCommon.ScalingType.SCALE_ASPECT_FILL, true);
-
-            VideoRendererGui.update(localrenderer, 3, 3, 25, 25, RendererCommon.ScalingType.SCALE_ASPECT_FILL, true);
+            VideoActivity.this.runOnUiThread(new Runnable()
+            {
+                public void run()
+                {
+                    connected();
+                }
+            });
+            mediaStream.videoTracks.get(0).addRenderer(new VideoRenderer(remoteRenderer));
+            VideoRendererGui.update(remoteRenderer, 0, 0, 100, 100, RendererCommon.ScalingType.SCALE_ASPECT_FILL, true);
+            VideoRendererGui.update(localRenderer, 3, 3, 25, 25, RendererCommon.ScalingType.SCALE_ASPECT_FILL, true);
         }
 
         public void onRemoveStream(MediaStream mediaStream)
         {
-            Log.e("1111111111111", "onRemoveStream");
+            VideoRendererGui.update(localRenderer, 0, 0, 100, 100, RendererCommon.ScalingType.SCALE_ASPECT_FILL, true);
             peerConnection.close();
         }
 
         public void onDataChannel(DataChannel dataChannel)
         {
-            Log.e("1111111111111", "onDataChannel");
         }
 
         public void onRenegotiationNeeded()
         {
-            Log.e("1111111111111", "onRenegotiationNeeded");
         }
     }
 

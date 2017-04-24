@@ -296,13 +296,13 @@ public class VideoActivity extends Activity implements VideoListener, ConnectLis
 
         this.calleeicon = (ImageView)view.findViewById(R.id.calleeicon);
 
-        if(VideoActivity.this.caller.icon != null && !VideoActivity.this.caller.icon.equals(""))
+        if(VideoActivity.this.callee.icon != null && !VideoActivity.this.callee.icon.equals(""))
         {
             new Thread(new Runnable()
             {
                 public void run()
                 {
-                    Bitmap bitmap = AppUtils.getBitmap(VideoActivity.this.caller.icon);
+                    Bitmap bitmap = AppUtils.getBitmap(VideoActivity.this.callee.icon);
 
                     Message message = new Message();
                     message.obj = bitmap;
@@ -462,6 +462,7 @@ public class VideoActivity extends Activity implements VideoListener, ConnectLis
         {
             public void run()
             {
+                VideoActivity.this.finish();
                 VideoActivity.this.broadcast("104", "");
                 Toast.makeText(getApplicationContext(), "连接失败", Toast.LENGTH_SHORT).show();
             }
@@ -486,6 +487,7 @@ public class VideoActivity extends Activity implements VideoListener, ConnectLis
         {
             public void run()
             {
+                VideoActivity.this.finish();
                 VideoActivity.this.broadcast("106", "");
                 Toast.makeText(getApplicationContext(), "连接超时", Toast.LENGTH_SHORT).show();
             }

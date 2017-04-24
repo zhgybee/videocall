@@ -12,6 +12,7 @@ import org.apache.cordova.CordovaInterface;
 import org.apache.cordova.CordovaPlugin;
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaWebView;
+import org.apache.cordova.PluginResult;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -53,6 +54,7 @@ public class CallPlugin extends CordovaPlugin implements PluginCallback
         if(action.equals("videocall"))
         {
             this.callbackContext = callbackContext;
+
 
             caller = args.getJSONObject(0);
             callee = args.getJSONObject(1);
@@ -106,6 +108,9 @@ public class CallPlugin extends CordovaPlugin implements PluginCallback
     public void callback(JSONObject message)
     {
         Log.e("CallPlugin回调函数", message.toString());
-        callbackContext.success(message);
+
+        PluginResult pluginresult = new PluginResult(PluginResult.Status.OK, message);
+        pluginresult.setKeepCallback(true);
+        this.callbackContext.sendPluginResult(pluginresult);
     }
 }

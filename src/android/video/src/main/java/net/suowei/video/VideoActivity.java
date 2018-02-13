@@ -211,8 +211,10 @@ public class VideoActivity extends Activity implements VideoListener, ConnectLis
         caller = (User)intent.getSerializableExtra("caller");
         if(caller.id != null && !caller.id.equals(""))
         {
+            String url = intent.getStringExtra("url");
+            String stun = intent.getStringExtra("stun");
             LinkedList<PeerConnection.IceServer> iceservers = new LinkedList<PeerConnection.IceServer>();
-            iceservers.add(new PeerConnection.IceServer("stun:stun.l.google.com:19302"));
+            iceservers.add(new PeerConnection.IceServer(stun));
 
             peerConnection = peerConnectionFactory.createPeerConnection(iceservers, peerConstraints, new PeerObserver());
 
@@ -221,7 +223,6 @@ public class VideoActivity extends Activity implements VideoListener, ConnectLis
             mediaStream.addTrack(audioTrack);
             peerConnection.addStream(mediaStream);
 
-            String url = intent.getStringExtra("url");
             callee = (User)intent.getSerializableExtra("callee");
 
             client = new VideoClient(url, VideoActivity.this, VideoActivity.this);

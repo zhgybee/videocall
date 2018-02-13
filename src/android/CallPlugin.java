@@ -96,10 +96,12 @@ public class CallPlugin extends CordovaPlugin implements PluginCallback
         usercallee.icon = callee.optString("icon");
 
         String url = configs.optString("url");
+        String stun = configs.optString("stun");
 
         intent.putExtra("caller", usercaller);
         intent.putExtra("callee", usercallee);
         intent.putExtra("url", url);
+        intent.putExtra("stun", stun);
 
         this.cordova.startActivityForResult(this, intent, 100);
     }

@@ -212,9 +212,32 @@ public class VideoActivity extends Activity implements VideoListener, ConnectLis
         if(caller.id != null && !caller.id.equals(""))
         {
             String url = intent.getStringExtra("url");
-            String stun = intent.getStringExtra("stun");
+            String iceserver = intent.getStringExtra("iceserver");
+
             LinkedList<PeerConnection.IceServer> iceservers = new LinkedList<PeerConnection.IceServer>();
-            iceservers.add(new PeerConnection.IceServer(stun));
+
+			if(iceserver != null)
+			{
+				String[] servers = iceserver.split(",");
+				for(int i = 0 ; i < servers.length ; i++)
+				{
+					String server = servers[i];
+					String[] serveritems = server.split("|");
+					if(serveritems.length == 3)
+					{
+						String iceurl = serveritems[0];
+						String icename = serveritems[1];
+						String icepassword = serveritems[2];
+						iceservers.add(new PeerConnection.IceServer(iceurl, icename, icepassword));
+					}
+					else if(serveritems.length == 1)
+					{
+						String iceurl = serveritems[0];
+						iceservers.add(new PeerConnection.IceServer(iceurl));
+					}
+				}
+			}
+
 
             peerConnection = peerConnectionFactory.createPeerConnection(iceservers, peerConstraints, new PeerObserver());
 
